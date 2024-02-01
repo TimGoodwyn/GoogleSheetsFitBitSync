@@ -673,16 +673,15 @@ function firstRun() {
 
 */
 function setup() {
-  var doc = SpreadsheetApp.getActiveSpreadsheet();
-  var selected;
-  var sheets = doc.getSheets();
-  var selectSheet = doc.getActiveSheet();
-  var earliestDate = new Date();
+  const doc = SpreadsheetApp.getActiveSpreadsheet();
+  const sheets = doc.getSheets();
+  let selectSheet = doc.getActiveSheet();
+  let earliestDate = new Date();
   if (getSheet() != null) {
     selectSheet = getSheet();
     earliestDate = getSheet().getRange("R2C2").getValue();
   }
-  var contentHTML = `
+  let contentHTML = `
 <!DOCTYPE html>
 <html>
   <head>
@@ -754,79 +753,56 @@ function setup() {
       <select id="loggables" name="loggables" multiple>
 `;
   for (let resource in allFields) {
-    selected = allFields.indexOf(allFields[resource]) > -1 ? " selected" : "";
+    const selected =
+      allFields.indexOf(allFields[resource]) > -1 ? " selected" : "";
     contentHTML += `        <option value="${allFields[resource]}"${selected}>${allFields[resource]}</option>\n`;
   }
-  contentHTML +=
-    "     </select></br></br>" +
-    "\n" +
-    "     <label>Sheet to store data: </label>" +
-    "\n" +
-    '     <select id="sheets" onchange=\'' +
-    "       var val = this.value;" +
-    '       document.getElementById("newSheet").value="1";' +
-    '       document.getElementById("sheetID").value=val=="new"?"":val;' +
-    '       var hiders = document.getElementsByClassName("sheetName");' +
-    '       var display=val=="new"?"visible":"hidden";' +
-    "       for (const item of hiders) {" +
-    "         item.style.visibility = display;" +
-    "       }" +
-    "'>" +
-    "\n";
+  contentHTML += `
+      </select></br></br>
+      <label>Sheet to store data: </label>
+      <select id="sheets" onchange='
+        const val = this.value;
+        document.getElementById("newSheet").value = "1";
+        document.getElementById("sheetID").value = val == "new" ? "" : val;
+        const hiders = document.getElementsByClassName("sheetName");
+        const display = val == "new" ? "visible" : "hidden";
+        for (const item of hiders) {
+          item.style.visibility = display;
+        }
+      '>
+`;
   if (sheets.length > 0) {
-    for (var i = 0; i < sheets.length; i++) {
-      selected =
+    for (let i = 0; i < sheets.length; i++) {
+      const selected =
         sheets[i].getSheetId() == selectSheet.getSheetId() ? " selected" : "";
-      contentHTML +=
-        '       <option value="' +
-        sheets[i].getSheetId() +
-        '"' +
-        selected +
-        ">\n" +
-        "         " +
-        sheets[i].getName() +
-        "\n" +
-        "       </option>" +
-        "\n";
+      contentHTML += `
+        <option value="${sheets[i].getSheetId()}"${selected}>${sheets[
+        i
+      ].getName()}</option>\n`;
     }
   }
-  contentHTML +=
-    '       <option value="new">' +
-    "\n" +
-    "       + New sheet" +
-    "\n" +
-    "       </option>" +
-    "\n" +
-    "     </select></br>" +
-    "\n" +
-    '     <label class="sheetName">Name:</label>' +
-    "\n" +
-    '     <input type="text" id="sheetID" name="sheetID" value="' +
-    selectSheet.getSheetId() +
-    '" class="sheetName"></br></br>' +
-    "\n" +
-    '     <input type="hidden" id="newSheet" name="newSheet" value="0">' +
-    "\n" +
-    "     <center>" +
-    '      <input class="normWid" type="button" value="Submit" onclick="' +
-    "         google.script.run" +
-    "         .withSuccessHandler(function(value){" +
-    "         })" +
-    "         .submitData(form);" +
-    "         document.getElementById('form').style.display === 'none';" +
-    "         document.getElementById('done').style.display = 'block';" +
-    '">' +
-    "\n" +
-    "     </center>" +
-    "    </form>" +
-    "\n" +
-    '	  <p id="done" style="display:none;">Please wait!</p>' +
-    "\n" +
-    signature() +
-    " </body>" +
-    "\n" +
-    "</html>";
-  var app = HtmlService.createHtmlOutput()
+  contentHTML += `
+        <option value="new">+ New sheet</option>
+      </select></br>
+      <label class="sheetName">Name:</label>
+      <input type="text" id="sheetID" name="sheetID" value="${selectSheet.getSheetId()}" class="sheetName"></br></br>
+      <input type="hidden" id="newSheet" name="newSheet" value="0">
+      <center>
+        <input class="normWid" type="button" value="Submit" onclick="
+          google.script.run
+            .withSuccessHandler(function(value){
+            })
+            .submitData(form);
+          document.getElementById('form').style.display === 'none';
+          document.getElementById('done').style.display = 'block';
+        ">
+      </center>
+    </form>
+	  <p id="done" style="display:none;">Please wait!</p>
+    ${signature()}
+  </body>
+</html>`;
+  const app = HtmlService.createHtmlOutput()
     .setTitle("Setup Fitbit Download")
     .setContent(contentHTML);
   doc.show(app);
