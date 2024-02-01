@@ -682,144 +682,80 @@ function setup() {
     selectSheet = getSheet();
     earliestDate = getSheet().getRange("R2C2").getValue();
   }
-  var contentHTML =
-    "" +
-    "<!DOCTYPE html>" +
-    "\n" +
-    "<html>" +
-    "\n" +
-    " <head>" +
-    "\n" +
-    "   <style>" +
-    "\n" +
-    "     label, input, select {" +
-    "\n" +
-    "       width: 45%;" +
-    "\n" +
-    "       display: inline-block;" +
-    "\n" +
-    "       vertical-align: top;" +
-    "\n" +
-    "     }" +
-    "\n" +
-    "     label{" +
-    "\n" +
-    "     }" +
-    "\n" +
-    "     input, select {" +
-    "\n" +
-    "       text-align: right;" +
-    "\n" +
-    "     }" +
-    "\n" +
-    "     .half {" +
-    "\n" +
-    "       width: 50%;" +
-    "\n" +
-    "     }" +
-    "\n" +
-    "     .full {" +
-    "\n" +
-    "       width: 100%;" +
-    "\n" +
-    "     }" +
-    "\n" +
-    "     .right {" +
-    "\n" +
-    "       text-align: right;" +
-    "\n" +
-    "       margin-right: 0px;" +
-    "\n" +
-    "     }" +
-    "\n" +
-    "     .normWid {" +
-    "\n" +
-    "       width: initial;" +
-    "\n" +
-    "     }" +
-    "\n" +
-    "     .sheetName {" +
-    "\n" +
-    "       visibility: hidden;" +
-    "\n" +
-    "     }" +
-    "\n" +
-    "   </style>" +
-    "\n" +
-    " </head>" +
-    "\n" +
-    " <body>" +
-    "\n" +
-    '   <form id="backForm">' +
-    "\n" +
-    '     <input type="hidden" id="task" name="task" value="BackToFitBitAPI">' +
-    "\n" +
-    "     <center>" +
-    '       <input class="normWid" type="button" value="<<< Setup FitBit App" onclick="' +
-    "         google.script.run" +
-    "         .withSuccessHandler(function(value){" +
-    "         })" +
-    "         .submitData(backForm);" +
-    '">' +
-    "\n" +
-    "     </center>" +
-    "   </form>" +
-    "\n" +
-    '   <form id="form">' +
-    "\n" +
-    '     <input type="hidden" id="task" name="task" value="setup">' +
-    "\n" +
-    '     <input type="hidden" id="spreadsheetID" name="spreadSheetID" value="' +
-    doc.getId().toString() +
-    '">' +
-    "\n" +
-    '     <label class="normWid">Script ID: </label>' +
-    "\n" +
-    '     <label class="normWid right">' +
-    ScriptApp.getScriptId() +
-    "</label></br></br>" +
-    "\n\n" +
-    "     <label>Fitbit OAuth 2.0 Client ID:*</label>" +
-    "\n" +
-    '     <input type="text" id="consumerKey" name="consumerKey" value="' +
-    getConsumerKey() +
-    '"></br>' +
-    "\n\n" +
-    "     <label>Fitbit OAuth Consumer Secret:*</label>" +
-    "\n" +
-    '     <input type="text" id="consumerSecret" name="consumerSecret" value="' +
-    getConsumerSecret() +
-    '"></br></br>' +
-    "\n\n" +
-    "     <label>Earliest Date (year-month-day): </label>" +
-    "\n" +
-    '     <input class="normWid" type="text" maxlength="4" size="4" id="year" name="year" value="' +
-    earliestDate.getFullYear() +
-    '">' +
-    " -\n\n" +
-    '     <input class="normWid" type="text" maxlength="2" size="2" id="month" name="month" value="' +
-    (earliestDate.getMonth() + 1) +
-    '">' +
-    " -\n\n" +
-    '     <input class="normWid" type="text" maxlength="2" size="2" id="day" name="day" value="' +
-    earliestDate.getDate() +
-    '"></br>' +
-    "\n\n" +
-    "     <label>Data Elements to download: </label>" +
-    "\n" +
-    '     <select id="loggables" name="loggables" multiple>' +
-    "\n";
-  for (var resource in allFields) {
+  var contentHTML = `
+<!DOCTYPE html>
+<html>
+  <head>
+    <style>
+      label, input, select {
+        width: 45%;
+        display: inline-block;
+        vertical-align: top;
+      }
+      label {
+      }
+      input, select {
+        text-align: right;
+      }
+      .half {
+        width: 50%;
+      }
+      .full {
+        width: 100%;
+      }
+      .right {
+        text-align: right;
+        margin-right: 0px;
+      }
+      .normWid {
+        width: initial;
+      }
+      .sheetName {
+        visibility: hidden;
+      }
+    </style>
+  </head>
+<body>
+   <form id="backForm">
+      <input type="hidden" id="task" name="task" value="BackToFitBitAPI">
+      <center>
+        <input class="normWid" type="button" value="<<< Setup FitBit App" onclick="
+          google.script.run
+            .withSuccessHandler(function(value){
+            })
+            .submitData(backForm);
+        ">
+      </center>
+    </form>
+    <form id="form">
+      <input type="hidden" id="task" name="task" value="setup">
+      <input type="hidden" id="spreadsheetID" name="spreadSheetID" value="${doc
+        .getId()
+        .toString()}">
+      <label class="normWid">Script ID: </label>
+      <label class="normWid right">${ScriptApp.getScriptId()}</label></br></br>
+
+      <label>Fitbit OAuth 2.0 Client ID:*</label>
+      <input type="text" id="consumerKey" name="consumerKey" value="${getConsumerKey()}"></br>
+
+      <label>Fitbit OAuth Consumer Secret:*</label>
+      <input type="text" id="consumerSecret" name="consumerSecret" value="${getConsumerSecret()}"></br></br>
+
+      <label>Earliest Date (year-month-day): </label>
+      <input class="normWid" type="text" maxlength="4" size="4" id="year" name="year" value="${earliestDate.getFullYear()}">-
+
+      <input class="normWid" type="text" maxlength="2" size="2" id="month" name="month" value="${
+        earliestDate.getMonth() + 1
+      }">-
+
+      <input class="normWid" type="text" maxlength="2" size="2" id="day" name="day" value="${earliestDate.getDate()}"></br>
+
+      <label>Data Elements to download: </label>
+      <select id="loggables" name="loggables" multiple>
+`;
+  for (let resource in allFields) {
     selected = allFields.indexOf(allFields[resource]) > -1 ? " selected" : "";
-    contentHTML +=
-      '       <option value="' +
-      allFields[resource] +
-      '"' +
-      selected +
-      ">" +
-      allFields[resource] +
-      "</option>" +
-      "\n";
+    contentHTML += `        <option value="${allFields[resource]}"${selected}>${allFields[resource]}</option>\n`;
   }
   contentHTML +=
     "     </select></br></br>" +
