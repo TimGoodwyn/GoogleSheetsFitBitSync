@@ -12,11 +12,11 @@ function it(name, fn) {
   fixtures.push(() => {
     try {
       fn();
+      console.log(`Passed: ${fixturePath.join(" :: ")}  "${name}"`);
     } catch (e) {
       console.warn(`Failed: ${fixturePath.join(" :: ")}  "${name}":`);
       console.warn(e);
     }
-    console.log(`Passed: ${fixturePath.join(" :: ")}  "${name}"`);
   });
 }
 
