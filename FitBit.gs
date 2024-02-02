@@ -41,26 +41,21 @@ const SERVICE_IDENTIFIER = "fitbit"; // usually do not need to change this eithe
 /**
  * Based on https://dev.fitbit.com/build/reference/web-api/
  * @typedef {object} APIDefinition
- * @property {} fields
+ * @property {} fields - dictionary of paths with the fields found in each
  * @property {} scope
  * @property {} url
  *
- * format: field -> path
  * @type { [api: string]: APIDefinition }
  */
 const apiDefinitions = {
   activeZoneMinutes: {
     fields: {
-      "activities-active-zone-minutes": {
-        0: {
-          value: [
-            "activeZoneMinutes",
-            "fatBurnActiveZoneMinutes",
-            "cardioActiveZoneMinutes",
-            "peakActiveZoneMinutes",
-          ],
-        },
-      },
+      "activities-active-zone-minutes:0:value": [
+        "activeZoneMinutes",
+        "fatBurnActiveZoneMinutes",
+        "cardioActiveZoneMinutes",
+        "peakActiveZoneMinutes",
+      ],
     },
     scope: "activity",
     url: "https://api.fitbit.com/1/user/-/activities/active-zone-minutes/date/[date]/1d.json",
@@ -86,33 +81,21 @@ const apiDefinitions = {
   },
   activitiesHeart: {
     fields: {
-      "activities-heart": {
-        0: {
-          value: ["restingHeartRate"],
-        },
-      },
+      "activities-heart:0:value": ["restingHeartRate"],
     },
     scope: "heartrate",
     url: "https://api.fitbit.com/1/user/-/activities/heart/date/[date]/1d.json",
   },
   breathingRate: {
     fields: {
-      br: {
-        0: {
-          value: ["breathingRate"],
-        },
-      },
+      "br:0:value": ["breathingRate"],
     },
     scope: "respiratory_rate",
     url: "https://api.fitbit.com/1/user/-/br/date/[date].json",
   },
   cardioScore: {
     fields: {
-      cardioScore: {
-        0: {
-          value: ["vo2Max"],
-        },
-      },
+      "cardioScore:0:value": ["vo2Max"],
     },
     scope: "cardio_fitness",
     url: "https://api.fitbit.com/1/user/-/cardioscore/date/[date].json",
@@ -134,27 +117,17 @@ const apiDefinitions = {
   },
   heartRateVariability: {
     fields: {
-      hrv: {
-        0: {
-          value: ["dailyRmssd", "deepRmssd"],
-        },
-      },
+      "hrv:0:value": ["dailyRmssd", "deepRmssd"],
     },
     scope: "heartrate",
     url: "https://api.fitbit.com/1/user/-/hrv/date/[date].json",
   },
   sleep: {
     fields: {
-      sleep: {
-        // Limitation: currently this API definition structure means it's not possible to mix scalar values at one level with
-        // nested values deeper - at the moment we get away with it.
-        // TODO: cope with multiple sleep logs in a day - want the main sleep if there is one
-        // TODO: array entries in levels:data
-        0: ["duration", "endTime", "startTime"],
-      },
-      summary: {
-        stages: ["deep", "light", "rem", "wake"],
-      },
+      "sleep:0": ["duration", "endTime", "startTime"],
+      // TODO: cope with multiple sleep logs in a day - want the main sleep if there is one
+      // TODO: array entries in levels:data
+      "summary:stages": ["deep", "light", "rem", "wake"],
     },
     scope: "sleep",
     url: "https://api.fitbit.com/1.2/user/-/sleep/date/[date].json",
@@ -168,8 +141,9 @@ const apiDefinitions = {
   },
 };
 
-// Assumes that leaf field names are unique between API calls (which is true in the existing version)
-// May need to introduce addressing by path if it's ambiguous
+/**
+ * Get the leaf field names, assuming they are unique. Doesn't check the fields' paths.
+ */
 function getFieldNames(obj) {
   if (Array.isArray(obj)) {
     return obj;
@@ -533,6 +507,7 @@ function syncDate(date = null) {
       const stats = JSON.parse(result.getContentText());
       console.log(`Logging ${apiName}...`);
 
+      // Figure out which of all the required fields this API call can help with, and use the data to populate the cell
       forEachRequiredField(
         stats,
         apiDefinition.fields,
@@ -561,6 +536,14 @@ function rowFromDate(date) {
   return date + 5;
 }
 
+/**
+ * Iterates over fields found in this definition which are used in the spreadsheet
+ * @param {object} statsObj
+ * @param {} fieldObj
+ * @param {string[]} apiFieldsNeeded
+ * @param {(fieldName: string, column: number, value: unknown) => void} fieldFn
+ * @returns {void}
+ */
 function forEachRequiredField(statsObj, fieldObj, apiFieldsNeeded, fieldFn) {
   if (Array.isArray(fieldObj)) {
     fieldObj.forEach((field) => {
@@ -569,11 +552,19 @@ function forEachRequiredField(statsObj, fieldObj, apiFieldsNeeded, fieldFn) {
       }
     });
   } else {
-    Object.keys(fieldObj).forEach((field) => {
-      if (statsObj[field]) {
+    Object.keys(fieldObj).forEach((fieldPath) => {
+      const [first, ...rest] = fieldPath.split(":");
+      if (statsObj[first]) {
+        // Unwrap one layer of the :-separated path
+        const nextLayer =
+          rest.length === 0
+            ? fieldObj[fieldPath]
+            : {
+                [rest.join(":")]: fieldObj[fieldPath],
+              };
         forEachRequiredField(
-          statsObj[field],
-          fieldObj[field],
+          statsObj[first],
+          nextLayer,
           apiFieldsNeeded,
           fieldFn
         );
