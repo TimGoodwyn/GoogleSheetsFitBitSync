@@ -122,6 +122,25 @@ const apiDefinitions = {
     scope: "heartrate",
     url: "https://api.fitbit.com/1/user/-/hrv/date/[date].json",
   },
+  hrvIntraday: {
+    fields: {
+      // Array
+      "hrv:0": [
+        {
+          name: "minutes",
+          fields: [
+            "minute",
+            "value:coverage",
+            "value:rmssd",
+            "value:lf",
+            "value:hf",
+          ],
+        },
+      ],
+    },
+    scope: "heartrate",
+    url: "https://api.fitbit.com/1/user/-/hrv/date/[date]/all.json",
+  },
   sleep: {
     fields: {
       "sleep:0": ["duration", "endTime", "startTime"],
@@ -146,7 +165,9 @@ const apiDefinitions = {
  */
 function getFieldNames(obj) {
   if (Array.isArray(obj)) {
-    return obj;
+    return obj.map((f) =>
+      typeof f === "string" ? f : getFieldNames(f.fields)
+    );
   } else {
     const fieldNames = [];
     Object.keys(obj).forEach((k) => {
@@ -158,7 +179,10 @@ function getFieldNames(obj) {
 
 function getFieldPaths(obj, prefix = "") {
   if (Array.isArray(obj)) {
-    return obj.map((f) => prefix + f);
+    return obj.map((f) => {
+      const fieldName = typeof f === "string" ? f : f.name;
+      return prefix + fieldName;
+    });
   } else {
     const fieldPaths = [];
     Object.keys(obj).forEach((k) => {
@@ -541,7 +565,13 @@ function syncDate(date = null) {
         (fieldName, column, value) => {
           console.log(`log ${fieldName}, ${column}, ${value}`);
           if (column >= 0) {
-            doc.getRange("R" + workingRow + "C" + (column + 1)).setValue(value);
+            const cell = doc.getRange("R" + workingRow + "C" + (column + 1));
+            if (Array.isArray(value)) {
+              // TODO: log array values in sheet
+              cell.setValue(`${value.length} items`);
+            } else {
+              cell.setValue(value);
+            }
           }
         }
       );
@@ -574,10 +604,11 @@ function forEachRequiredField(statsObj, fieldObj, apiFieldsNeeded, fieldFn) {
   if (Array.isArray(fieldObj)) {
     fieldObj.forEach((field) => {
       // TODO later: support : in leaf fields array (to support nesting within array-valued fields)
-
-      if (apiFieldsNeeded[field] !== undefined) {
-        const columnIndex = apiFieldsNeeded[field];
-        fieldFn(field, columnIndex, statsObj[field]);
+      // (but that will be within the code for logging fields with array values)
+      const fieldName = typeof field === "string" ? field : field.name;
+      if (apiFieldsNeeded[fieldName] !== undefined) {
+        const columnIndex = apiFieldsNeeded[fieldName];
+        fieldFn(field, columnIndex, statsObj[fieldName]);
       }
     });
   } else {
