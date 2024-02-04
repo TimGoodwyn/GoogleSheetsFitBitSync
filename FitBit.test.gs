@@ -67,4 +67,29 @@ describe("forEachRequiredField", () => {
     assertEq(output[0][1], 2);
     assertEq(output[0][2], "apple");
   });
+
+  it("allows field to be referred to by fully-qualified path", () => {
+    const requiredFields = { "food:sweet:fruit": 2 };
+    const fields = { "food:sweet": ["colour", "fruit"] };
+    const stats = {
+      food: {
+        sweet: {
+          colour: "red",
+          fruit: "apple",
+          name: "Gala",
+        },
+      },
+    };
+    const output = [];
+    const fieldFn = (fieldName, column, value) => {
+      output.push([fieldName, column, value]);
+    };
+    forEachRequiredField(stats, fields, requiredFields, fieldFn);
+
+    assertEq(output.length, 1);
+    assertEq(output[0].length, 3);
+    assertEq(output[0][0], "fruit");
+    assertEq(output[0][1], 2);
+    assertEq(output[0][2], "apple");
+  });
 });

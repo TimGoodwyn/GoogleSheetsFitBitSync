@@ -48,7 +48,7 @@ const SERVICE_IDENTIFIER = "fitbit"; // usually do not need to change this eithe
  * @type { [api: string]: APIDefinition }
  */
 const apiDefinitions = {
-  activeZoneMinutes: {
+  azm: {
     fields: {
       "activities-active-zone-minutes:0:value": [
         "activeZoneMinutes",
@@ -115,7 +115,7 @@ const apiDefinitions = {
     scope: "nutrition",
     url: "https://api.fitbit.com/1/user/-/foods/log/date/[date].json",
   },
-  heartRateVariability: {
+  hrv: {
     fields: {
       "hrv:0:value": ["dailyRmssd", "deepRmssd"],
     },
@@ -153,6 +153,18 @@ function getFieldNames(obj) {
       fieldNames.push(...getFieldNames(obj[k]));
     });
     return fieldNames;
+  }
+}
+
+function getFieldPaths(obj, prefix = "") {
+  if (Array.isArray(obj)) {
+    return obj.map((f) => prefix + f);
+  } else {
+    const fieldPaths = [];
+    Object.keys(obj).forEach((k) => {
+      fieldPaths.push(...getFieldPaths(obj[k], `${k}:`).map((f) => prefix + f));
+    });
+    return fieldPaths;
   }
 }
 
@@ -493,12 +505,25 @@ function syncDate(date = null) {
   // For each API definition above, check whether any fo the fields are used and fetch from the API if so
   Object.entries(apiDefinitions).forEach(([apiName, apiDefinition]) => {
     const fieldNames = getFieldNames(apiDefinition.fields);
+    const fieldPaths = getFieldPaths(apiDefinition.fields);
+    console.log(fieldPaths);
     const apiFieldsNeeded = Object.fromEntries(
       fieldNames
         .filter((field) => allFieldsUsed.includes(field))
         .map((field) => [field, allFieldsUsed.indexOf(field)])
     );
-    if (Object.keys(apiFieldsNeeded).length > 0) {
+    const apiPathsNeeded = Object.fromEntries(
+      fieldPaths
+        .filter((path) => allFieldsUsed.includes(`${apiName}:${path}`))
+        .map((path) => [path, allFieldsUsed.indexOf(`${apiName}:${path}`)])
+    );
+
+    console.log("apiPathsNeeded:");
+    console.log(apiPathsNeeded);
+    if (
+      Object.keys(apiFieldsNeeded).length > 0 ||
+      Object.keys(apiPathsNeeded).length > 0
+    ) {
       console.log(`Fetching ${apiName}...`);
       const result = UrlFetchApp.fetch(
         apiDefinition.url.replace("[date]", dateString),
@@ -511,7 +536,8 @@ function syncDate(date = null) {
       forEachRequiredField(
         stats,
         apiDefinition.fields,
-        apiFieldsNeeded,
+        // Allow fields to be used either by final name (assuming unique) or by fully-qualified path
+        { ...apiFieldsNeeded, ...apiPathsNeeded },
         (fieldName, column, value) => {
           console.log(`log ${fieldName}, ${column}, ${value}`);
           if (column >= 0) {
@@ -540,15 +566,18 @@ function rowFromDate(date) {
  * Iterates over fields found in this definition which are used in the spreadsheet
  * @param {object} statsObj
  * @param {} fieldObj
- * @param {string[]} apiFieldsNeeded
+ * @param {{ [fieldOrPath: string: number } apiFieldsNeeded fields and paths -> column
  * @param {(fieldName: string, column: number, value: unknown) => void} fieldFn
  * @returns {void}
  */
 function forEachRequiredField(statsObj, fieldObj, apiFieldsNeeded, fieldFn) {
   if (Array.isArray(fieldObj)) {
     fieldObj.forEach((field) => {
+      // TODO later: support : in leaf fields array (to support nesting within array-valued fields)
+
       if (apiFieldsNeeded[field] !== undefined) {
-        fieldFn(field, apiFieldsNeeded[field], statsObj[field]);
+        const columnIndex = apiFieldsNeeded[field];
+        fieldFn(field, columnIndex, statsObj[field]);
       }
     });
   } else {
@@ -568,6 +597,29 @@ function forEachRequiredField(statsObj, fieldObj, apiFieldsNeeded, fieldFn) {
           apiFieldsNeeded,
           fieldFn
         );
+
+        // handle fields requested by full path:
+        const apiFieldsNeededMinusPrefix = Object.fromEntries(
+          Object.entries(apiFieldsNeeded)
+            .filter(([nameOrPath]) => nameOrPath.startsWith(`${first}:`))
+            .map(([nameOrPath, column]) => [
+              nameOrPath.slice(nameOrPath.indexOf(":") + 1),
+              column,
+            ])
+        );
+        if (Object.keys(apiFieldsNeededMinusPrefix).length > 0) {
+          console.log(
+            `found requested fields with prefix ${first}: ${JSON.stringify(
+              apiFieldsNeededMinusPrefix
+            )}`
+          );
+          forEachRequiredField(
+            statsObj[first],
+            nextLayer,
+            apiFieldsNeededMinusPrefix,
+            fieldFn
+          );
+        }
       }
     });
   }
